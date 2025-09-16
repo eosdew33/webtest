@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중랑 이음 (Jungnang Connect) - 중랑구 봉사 매칭 플랫폼</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Community (Soft Beige, Gentle Green, Muted Orange) -->
+    <!-- Application Structure Plan: A user-centric, single-page dashboard designed to guide users from understanding the platform's purpose to engaging with its core functions. The flow is: 1) Hero section for immediate value proposition. 2) 'How It Works' for process clarity. 3) An interactive 'Live Dashboard' to showcase impact and activity types with charts. 4) A filterable 'Find Opportunities' section to provide tangible examples. 5) An AI-powered 'Gemini Assistant' to generate volunteer ideas and help requests. 6) 'User Roles' section to detail benefits for both volunteers and beneficiaries. This structure was chosen over a simple feature list to create an engaging narrative, making the platform feel alive and impactful, thereby encouraging user sign-ups. -->
+    <!-- Visualization & Content Choices: 
+        - Key Metrics (Total Volunteers, etc.): Goal=Inform. Method=Dynamic number counters. Interaction=None (auto-animates). Justification=Provides a quick, impressive overview of platform scale.
+        - Volunteer Distribution: Goal=Inform. Method=Donut Chart (Chart.js). Interaction=Hover for details. Justification=Visually breaks down the user base composition simply.
+        - Top Volunteer Categories: Goal=Compare/Explore. Method=Bar Chart (Chart.js). Interaction=Click on a bar to filter the 'Opportunities' list. Justification=Connects high-level data to specific, actionable examples, demonstrating the platform's core matching functionality.
+        - Gemini API Features: Goal=Engage/Assist. Method=Text input + API call. Interaction=User types keywords and clicks a button to get AI-generated content. Justification=Lowers the barrier to entry for both user types, making it easier to write help requests and find meaningful volunteer opportunities.
+        - Filterable List: Goal=Explore. Method=HTML cards updated via JS. Interaction=Dropdown filters. Justification=Allows users to see the tangible value and variety of opportunities available.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #fdfaf6;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #22c55e, #16a34a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .step-card::before {
+            content: attr(data-step);
+            position: absolute;
+            top: -1.25rem;
+            left: -1.25rem;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 9999px;
+            background-color: #f97316;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            border: 2px solid #fdfaf6;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold">
+                <span class="gradient-text">중랑 이음</span>
+            </div>
+            <div>
+                <a href="#dashboard" class="text-gray-600 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium">활동 현황</a>
+                <a href="#opportunities" class="text-gray-600 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium">봉사 찾기</a>
+                <a href="#gemini-assist" class="text-gray-600 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium">AI 도우미</a>
+                <a href="#roles" class="text-gray-600 hover:text-green-600 px-3 py-2 rounded-md text-sm font-medium">참여 안내</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="py-20 md:py-32 text-center bg-white">
+            <div class="container mx-auto px-6">
+                <h1 class="text-4xl md:text-6xl font-bold leading-tight mb-4">중랑구의 따뜻한 마음을 잇습니다</h1>
+                <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8">봉사하려는 당신과 도움이 필요한 이웃을 '중랑 이음'이 쉽고 빠르게 연결해 드립니다.</p>
+                <div>
+                    <a href="#roles" class="bg-green-600 text-white font-bold py-3 px-8 rounded-full hover:bg-green-700 transition duration-300 mr-4 text-lg">봉사활동 참여하기</a>
+                    <a href="#roles" class="bg-orange-500 text-white font-bold py-3 px-8 rounded-full hover:bg-orange-600 transition duration-300 text-lg">도움 요청하기</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="py-16">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-2">'중랑 이음' 이용 방법</h2>
+                    <p class="text-gray-600">간단한 3단계로 나눔을 시작하고 경험할 수 있습니다.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8 md:gap-12">
+                    <div data-step="1" class="relative bg-white p-8 rounded-lg shadow-lg border-t-4 border-orange-500">
+                        <h3 class="text-xl font-bold mb-2">회원가입 및 프로필 등록</h3>
+                        <p class="text-gray-600">봉사자는 재능과 가능 시간을, 수혜자는 필요한 도움을 등록하여 나눔을 준비해요.</p>
+                    </div>
+                    <div data-step="2" class="relative bg-white p-8 rounded-lg shadow-lg border-t-4 border-green-500">
+                        <h3 class="text-xl font-bold mb-2">탐색 및 매칭</h3>
+                        <p class="text-gray-600">내게 맞는 봉사활동을 찾거나, 우리 동네에 필요한 도움 요청을 확인하고 신청해요.</p>
+                    </div>
+                    <div data-step="3" class="relative bg-white p-8 rounded-lg shadow-lg border-t-4 border-blue-500">
+                        <h3 class="text-xl font-bold mb-2">활동 및 후기 공유</h3>
+                        <p class="text-gray-600">약속된 활동을 진행하고, 따뜻한 후기를 나누며 더 큰 공동체를 만들어가요.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard" class="py-16 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-2">실시간 활동 현황</h2>
+                    <p class="text-gray-600">중랑구의 이웃들이 함께 만들어가는 따뜻한 변화를 확인하세요.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 text-center">
+                    <div class="bg-green-50 p-6 rounded-lg shadow">
+                        <p class="text-xl text-green-800 font-semibold mb-2">총 봉사자 수</p>
+                        <p id="total-volunteers" class="text-5xl font-bold text-green-600">0</p>
+                    </div>
+                    <div class="bg-orange-50 p-6 rounded-lg shadow">
+                        <p class="text-xl text-orange-800 font-semibold mb-2">연결된 이웃</p>
+                        <p id="total-matched" class="text-5xl font-bold text-orange-500">0</p>
+                    </div>
+                    <div class="bg-blue-50 p-6 rounded-lg shadow">
+                        <p class="text-xl text-blue-800 font-semibold mb-2">누적 봉사 시간</p>
+                        <p id="total-hours" class="text-5xl font-bold text-blue-500">0</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h3 class="text-2xl font-bold text-center mb-4">봉사자 유형</h3>
+                        <div class="chart-container">
+                            <canvas id="volunteerTypeChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-center mb-4">주요 봉사 분야 (클릭하여 필터링)</h3>
+                        <div class="chart-container">
+                            <canvas id="activityCategoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="opportunities" class="py-16">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-2">도움을 기다리는 이웃</h2>
+                    <p class="text-gray-600">당신의 참여가 필요한 다양한 봉사활동을 찾아보세요.</p>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <div>
+                        <label for="categoryFilter" class="font-semibold mr-2">분야:</label>
+                        <select id="categoryFilter" class="p-2 border rounded-md shadow-sm">
+                            <option value="all">전체</option>
+                            <option value="생활 지원">생활 지원</option>
+                            <option value="학습 지도">학습 지도</option>
+                            <option value="재능 기부">재능 기부</option>
+                            <option value="병원 동행">병원 동행</option>
+                            <option value="말벗">말벗</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="locationFilter" class="font-semibold mr-2">지역:</label>
+                        <select id="locationFilter" class="p-2 border rounded-md shadow-sm">
+                            <option value="all">중랑구 전체</option>
+                            <option value="면목동">면목동</option>
+                            <option value="상봉동">상봉동</option>
+                            <option value="중화동">중화동</option>
+                            <option value="묵동">묵동</option>
+                            <option value="망우동">망우동</option>
+                            <option value="신내동">신내동</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="opportunityList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                </div>
+            </div>
+        </section>
+
+        <section id="gemini-assist" class="py-16 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-2"><span class="gradient-text">✨ AI 봉사 도우미</span></h2>
+                    <p class="text-gray-600">Gemini AI를 활용해 봉사 아이디어를 얻고, 도움 요청서를 손쉽게 작성해보세요.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8 md:gap-12">
+                    <div class="bg-green-50 border-l-4 border-green-500 p-8 rounded-r-lg">
+                        <h3 class="text-2xl font-bold text-green-800 mb-4">봉사 아이디어 제안받기</h3>
+                        <p class="text-gray-700 mb-4">당신의 재능이나 관심사를 알려주시면, AI가 맞춤형 봉사활동 아이디어를 제안해 드립니다.</p>
+                        <textarea id="volunteer-input" class="w-full p-3 border rounded-md mb-4" rows="3" placeholder="예: 그림 그리기, 어르신과 대화하기, 컴퓨터 활용"></textarea>
+                        <button id="generate-ideas-btn" class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition duration-300">✨ 아이디어 생성하기</button>
+                        <div id="ideas-result" class="mt-6 bg-white p-4 rounded-md min-h-[100px]">
+                            <div class="loader-container" style="display: none;"><div class="loader"></div></div>
+                            <p class="text-gray-500">이곳에 AI가 제안하는 봉사 아이디어가 표시됩니다.</p>
+                        </div>
+                    </div>
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-8 rounded-r-lg">
+                        <h3 class="text-2xl font-bold text-orange-800 mb-4">도움 요청서 작성하기</h3>
+                        <p class="text-gray-700 mb-4">필요한 도움을 간단한 키워드로 입력하시면, AI가 따뜻하고 정중한 요청서 초안을 만들어 드립니다.</p>
+                        <textarea id="beneficiary-input" class="w-full p-3 border rounded-md mb-4" rows="3" placeholder="예: 병원 동행, 높은 곳 물건 내리기, 스마트폰 문의"></textarea>
+                        <button id="generate-request-btn" class="w-full bg-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-orange-600 transition duration-300">✨ 요청서 생성하기</button>
+                        <div id="request-result" class="mt-6 bg-white p-4 rounded-md min-h-[100px]">
+                            <div class="loader-container" style="display: none;"><div class="loader"></div></div>
+                            <p class="text-gray-500">이곳에 AI가 작성한 도움 요청서가 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="roles" class="py-16">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-2">누구나 참여할 수 있어요</h2>
+                    <p class="text-gray-600">당신에게 맞는 역할로 중랑구의 따뜻한 변화를 함께 만들어주세요.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8 md:gap-12">
+                    <div class="bg-green-50 border-l-4 border-green-500 p-8 rounded-r-lg">
+                        <h3 class="text-2xl font-bold text-green-800 mb-4">봉사자 🙋‍♀️</h3>
+                        <p class="text-gray-700 mb-6">나의 시간과 재능으로 이웃에게 힘이 되어주세요. 학생, 직장인, 어르신 누구나 환영합니다.</p>
+                        <ul class="list-disc list-inside text-gray-700 space-y-2 mb-6">
+                            <li>내 주변의 봉사활동 실시간 검색</li>
+                            <li>나의 재능과 시간에 맞는 맞춤 추천</li>
+                            <li>체계적인 봉사 시간 기록 및 관리</li>
+                        </ul>
+                        <button class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition duration-300">봉사자로 등록하기</button>
+                    </div>
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-8 rounded-r-lg">
+                        <h3 class="text-2xl font-bold text-orange-800 mb-4">도움이 필요하신 분 👵</h3>
+                        <p class="text-gray-700 mb-6">혼자 하기 어려운 일이 있다면 주저하지 말고 도움을 요청하세요. 중랑구의 이웃들이 함께합니다.</p>
+                        <ul class="list-disc list-inside text-gray-700 space-y-2 mb-6">
+                            <li>클릭 몇 번으로 간편하게 도움 요청</li>
+                            <li>믿을 수 있는 이웃 봉사자와 연결</li>
+                            <li>전화/방문을 통한 대리 등록 지원</li>
+                        </ul>
+                        <button class="w-full bg-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-orange-600 transition duration-300">도움 요청하기</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-xl font-bold mb-2">중랑 이음 (Jungnang Connect)</p>
+            <p class="text-gray-400">© 2025 중랑구 봉사 매칭 플랫폼. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const mockData = {
+                opportunities: [
+                    { id: 1, title: '어르신 장보기 동행', category: '생활 지원', location: '면목동', time: '매주 수요일 오후', details: '거동이 불편하신 할머님의 주 1회 장보기를 도와주실 분을 찾습니다.' },
+                    { id: 2, title: '초등학생 수학 학습지도', category: '학습 지도', location: '상봉동', time: '주 2회 (협의)', details: '기초 수학에 어려움을 느끼는 초등학교 3학년 학생의 멘토가 되어주세요.' },
+                    { id: 3, title: '반려견 산책 봉사', category: '생활 지원', location: '신내동', time: '매일 저녁 (시간 협의)', details: '입원 중인 보호자를 대신하여 소형견의 저녁 산책을 도와주실 분을 구합니다.' },
+                    { id: 4, title: '스마트폰 사용법 교육', category: '재능 기부', location: '중화동', time: '주 1회 토요일', details: '경로당 어르신들께 스마트폰 기본 사용법을 알려주실 분을 모집합니다.' },
+                    { id: 5, title: '독거 어르신 말벗 봉사', category: '말벗', location: '묵동', time: '주 1-2회 방문', details: '홀로 지내시는 어르신 댁에 방문하여 안부를 여쭙고 대화를 나눠주실 분을 찾습니다.' },
+                    { id: 6, title: '병원 방문 동행', category: '병원 동행', location: '망우동', time: '월 2회 (날짜 협의)', details: '정기적으로 병원 검진이 필요하신 어르신과 안전하게 동행해주실 분을 구합니다.' },
+                    { id: 7, title: '한부모 가정 청소 지원', category: '생활 지원', location: '상봉동', time: '월 1회 주말', details: '일과 육아로 바쁜 한부모 가정을 위해 월 1회 대청소를 도와주실 분을 찾습니다.' },
+                    { id: 8, title: '영어 동화책 읽어주기', category: '학습 지도', location: '신내동', time: '매주 토요일 오전', details: '저소득층 아동들에게 영어 동화책을 재미있게 읽어줄 대학생 봉사자를 모집합니다.' },
+                ]
+            };
+            
+            const categoryFilter = document.getElementById('categoryFilter');
+            const locationFilter = document.getElementById('locationFilter');
+            const opportunityList = document.getElementById('opportunityList');
+
+            const renderOpportunities = () => {
+                const category = categoryFilter.value;
+                const location = locationFilter.value;
+
+                opportunityList.innerHTML = '';
+
+                const filtered = mockData.opportunities.filter(op => {
+                    const categoryMatch = category === 'all' || op.category === category;
+                    const locationMatch = location === 'all' || op.location === location;
+                    return categoryMatch && locationMatch;
+                });
+
+                if (filtered.length === 0) {
+                    opportunityList.innerHTML = `<p class="col-span-full text-center text-gray-500">해당 조건에 맞는 봉사활동이 없습니다.</p>`;
+                    return;
+                }
+
+                filtered.forEach(op => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300';
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-sm font-semibold ${getCategoryColor(op.category)} px-3 py-1 rounded-full">${op.category}</span>
+                            <span class="text-sm text-gray-500">${op.location}</span>
+                        </div>
+                        <h4 class="text-xl font-bold mb-2">${op.title}</h4>
+                        <p class="text-gray-600 mb-4 h-16">${op.details}</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 border-t pt-3">
+                            <span>${op.time}</span>
+                            <a href="#" class="font-semibold text-green-600 hover:text-green-800">자세히 보기 &rarr;</a>
+                        </div>
+                    `;
+                    opportunityList.appendChild(card);
+                });
+            };
+
+            const getCategoryColor = (category) => {
+                switch (category) {
+                    case '생활 지원': return 'bg-blue-100 text-blue-800';
+                    case '학습 지도': return 'bg-green-100 text-green-800';
+                    case '재능 기부': return 'bg-purple-100 text-purple-800';
+                    case '병원 동행': return 'bg-red-100 text-red-800';
+                    case '말벗': return 'bg-yellow-100 text-yellow-800';
+                    default: return 'bg-gray-100 text-gray-800';
+                }
+            };
+            
+            const animateValue = (obj, start, end, duration) => {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            };
+
+            animateValue(document.getElementById('total-volunteers'), 0, 1248, 1500);
+            animateValue(document.getElementById('total-matched'), 0, 892, 1500);
+            animateValue(document.getElementById('total-hours'), 0, 21576, 1500);
+
+            const volunteerTypeCtx = document.getElementById('volunteerTypeChart').getContext('2d');
+            new Chart(volunteerTypeCtx, {
+                type: 'doughnut',
+                data: { labels: ['학생', '직장인', '시니어', '일반 주민/단체'], datasets: [{ data: [35, 30, 20, 15], backgroundColor: ['#34d399', '#60a5fa', '#f97316', '#a78bfa'], borderColor: '#fdfaf6', borderWidth: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (c) => `${c.label}: ${c.raw}%` } } } }
+            });
+
+            const activityCategoryCtx = document.getElementById('activityCategoryChart').getContext('2d');
+            const activityCategories = ['생활 지원', '학습 지도', '재능 기부', '병원 동행', '말벗'];
+            new Chart(activityCategoryCtx, {
+                type: 'bar',
+                data: { labels: activityCategories, datasets: [{ label: '요청 건수', data: [120, 85, 70, 55, 95], backgroundColor: ['#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab308'], borderRadius: 5 }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true } }, plugins: { legend: { display: false } },
+                    onClick: (e, els) => {
+                        if (els.length > 0) {
+                            const category = activityCategories[els[0].index];
+                            categoryFilter.value = category;
+                            renderOpportunities();
+                            document.getElementById('opportunities').scrollIntoView({ behavior: 'smooth' });
+                        }
+                    }
+                }
+            });
+            
+            categoryFilter.addEventListener('change', renderOpportunities);
+            locationFilter.addEventListener('change', renderOpportunities);
+            renderOpportunities();
+            
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const generateIdeasBtn = document.getElementById('generate-ideas-btn');
+            const generateRequestBtn = document.getElementById('generate-request-btn');
+            const volunteerInput = document.getElementById('volunteer-input');
+            const beneficiaryInput = document.getElementById('beneficiary-input');
+            const ideasResult = document.getElementById('ideas-result');
+            const requestResult = document.getElementById('request-result');
+
+            const showLoader = (resultElement) => {
+                resultElement.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+                resultElement.querySelector('.loader-container').style.display = 'block';
+            };
+
+            const formatResponse = (text) => {
+                return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*/g, '<br>• ').replace(/\n/g, '<br>');
+            };
+            
+            const callGeminiAPI = async (prompt, resultElement) => {
+                showLoader(resultElement);
+                try {
+                    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        throw new Error(`API 호출 실패: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        resultElement.innerHTML = formatResponse(text);
+                    } else {
+                        resultElement.innerHTML = '<p class="text-red-500">응답을 받는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p>';
+                    }
+                } catch (error) {
+                    console.error('Gemini API Error:', error);
+                    resultElement.innerHTML = `<p class="text-red-500">오류가 발생했습니다: ${error.message}</p>`;
+                }
+            };
+
+            generateIdeasBtn.addEventListener('click', () => {
+                const userInput = volunteerInput.value.trim();
+                if (!userInput) {
+                    ideasResult.innerHTML = '<p class="text-red-500">재능이나 관심사를 입력해주세요.</p>';
+                    return;
+                }
+                const prompt = `당신은 서울 중랑구의 '중랑 이음'이라는 지역 공동체 봉사 플랫폼의 친절한 AI 코디네이터입니다. 잠재적 봉사자가 자신의 재능과 관심사를 공유했습니다. 이를 바탕으로 중랑구 지역 사회에 실질적인 도움이 될 수 있는 창의적이고 의미있는 봉사활동 아이디어 3가지를 제안해주세요. 각 아이디어는 매력적인 제목과 간단하고 동기를 부여하는 설명으로 구성되어야 합니다. 응답은 한국어로, 따뜻하고 친근한 어조로 작성해주세요.\n\n봉사자 재능/관심사: "${userInput}"`;
+                callGeminiAPI(prompt, ideasResult);
+            });
+
+            generateRequestBtn.addEventListener('click', () => {
+                const userInput = beneficiaryInput.value.trim();
+                if (!userInput) {
+                    requestResult.innerHTML = '<p class="text-red-500">필요한 도움을 입력해주세요.</p>';
+                    return;
+                }
+                const prompt = `당신은 '중랑 이음'이라는 지역 공동체 봉사 플랫폼의 도움 요청서 작성을 돕는 친절한 AI 어시스턴트입니다. 사용자가 도움 요청에 대한 핵심 키워드를 제공했습니다. 이 키워드를 바탕으로, 봉사자들이 내용을 명확하게 이해할 수 있고 따뜻한 마음으로 참여하고 싶게 만드는 정중하고 상세한 도움 요청서 초안을 작성해주세요. 응답은 한국어로, 공손하고 감사하는 마음이 담긴 어조로 작성해주세요.\n\n도움 요청 키워드: "${userInput}"`;
+                callGeminiAPI(prompt, requestResult);
+            });
+        });
+    </script>
+</body>
+</html>
+
